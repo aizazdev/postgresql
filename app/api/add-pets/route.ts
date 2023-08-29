@@ -1,18 +1,25 @@
 import { NextRequest, NextResponse } from '@/node_modules/next/server';
-import {sql} from '@vercel/postgres';
+import { sql } from '@vercel/postgres';
+import { db, petsTable } from '../../lib/drizzle';
 
-export async function GET(request: Request) {
-    const {searchParams} = new URL(request.url);
-    const petName = searchParams.get('petName');
-    const ownerName = searchParams.get('ownerName');
+export async function GET(request: NextRequest) {
+    const res = await db.select().from(petsTable);
+    
+    return NextResponse.json( res , { status: 200 });
+}
+
+export async function POST(request: NextRequest) {
+    const req = await request.json();
 
     try {
-        if(!petName || !ownerName) throw new Error('pet and owner name required');
-        await sql`INSERT INTO Pets (Name, Owner) VALUES  (${petName}, ${ownerName})`
+        if (req.Name && req.Owner) {
+            await sql`insert into Pets(Name, Owner) VALUES(${req.Name}, ${req.Owner})`
+            console.log("req data", req);
+            return NextResponse.json({ message: 'data added successfully' });
+        } else {
+            throw new Error("Pet Name, Owner Name is required");
+        }
     } catch (error) {
-        return NextResponse.json({error}, {status: 500});
+        return NextResponse.json({ message: (error as { message: string }).message });
     }
-
-    const pets = await sql`SELECT * FROM Pets;`;
-    return NextResponse.json({ pets }, { status: 200 });
 }
